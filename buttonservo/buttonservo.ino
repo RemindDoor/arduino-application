@@ -12,6 +12,7 @@ const int buttonPin = 2;     // the number of the pushbutton pin
 int buttonState = 0; 
 
 boolean turnedLeft = false;
+boolean buttonPressed = false;
 
 void setup() {
   myservo.attach(9);  // attaches the servo on pin 9 to the servo object
@@ -21,16 +22,15 @@ void setup() {
 
 void loop() {
   buttonState = digitalRead(buttonPin);
-  
 
   // check if the pushbutton is pressed. If it is, the buttonState is HIGH:
-  if (buttonState == LOW) {
-    
+  if (buttonState == LOW && !buttonPressed) {
+    buttonPressed = true;
     if (turnedLeft) {
       
        // goes from 180 degrees to 0 degrees
         myservo.write(0);              // tell servo to go to position in variable 'pos'
-        delay(150);                       // waits 15ms for the servo to reach the position
+        delay(150);                    // waits 15ms for the servo to reach the position
       
       turnedLeft = false;
     } else {
@@ -45,7 +45,10 @@ void loop() {
       turnedLeft = true;
     }
     delay(100);
-  } else {
+  } else if (buttonState != LOW) {
+    if (buttonPressed) {
+      buttonPressed = false;  
+    }
     // do nothing
   }
 }
