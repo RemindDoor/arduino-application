@@ -11,94 +11,97 @@
   This example code is in the public domain.
 */
 #include "SDPArduino.h"
+#include "AES.h"
 #include <ArduinoBLE.h>
 #include <Wire.h>
+
 #ifndef ARDUINO_SAMD_MKRWIFI1010
+
 #include <HardwareSerial.h>
 
 extern HardwareSerial Serial;
 #endif
 
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
-// BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
-BLEByteCharacteristic switchCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
-const int ledPin = 13; // pin to use for the LED
-bool currentlyLocked = false;
+BLEStringCharacteristic stringCharacteristic("19B10001-0001-537E-4F6C-D104768A1214", BLERead | BLEWrite, 512);
+byte received[2048] = {};
+int position = 0;
+byte key[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+AES aes;
+
+void loop() {
+	BLE.poll();
+}
+
+void blePeripheralConnectHandler(BLEDevice central) {
+	Serial.println("Receiving data ...");
+}
+
+void printString(byte* pointer, int size) {
+	for(int i = 0; i < size; i++){
+		Serial.print((char) pointer[i]);
+	}
+}
+
+int getLengthOfTransmission(byte* pointer) {
+	int size = 0;
+	int count = 0;
+	while (true) {
+		pointer++;
+		if (*pointer == 255) {
+			count++;
+			if (count == 8) {
+				return size-7;
+			}
+		} else {
+			count = 0;
+		}
+		size++;
+	}
+}
+
+void blePeripheralDisconnectHandler(BLEDevice central) {
+	Serial.println("Disconnected.");
+
+	byte* plain = new byte[2048];
+
+	aes.set_key(key, 16);
+	aes.cbc_decrypt(received+16, plain, 64, received);
+
+	Serial.println("Decrypted.");
+	printString(plain, getLengthOfTransmission(plain));
+
+	position = 0;
+	memset(received, 0, 2048);
+}
+
+void stringCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
+	if (stringCharacteristic.written()) {
+		String value = stringCharacteristic.value();
+		Serial.print("Receiving ... ");
+
+		memcpy(received+position, value.c_str(), value.length());
+		position += value.length();
+	}
+}
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(115200);
 	Wire.begin();
 	motorStop(1);
-	// set LED pin to output mode
-	pinMode(ledPin, OUTPUT);
-	// begin initialization
+
 	if (!BLE.begin()) {
 		Serial.println("starting BLE failed!");
 		while (1);
 	}
-	// set advertised local name and service UUID:
-	BLE.setLocalName("LED");
+	BLE.setLocalName("RemindDoor");
 	BLE.setAdvertisedService(ledService);
-	// add the characteristic to the service
-	ledService.addCharacteristic(switchCharacteristic);
-	// add service
+	ledService.addCharacteristic(stringCharacteristic);
 	BLE.addService(ledService);
-	// set the initial value for the characeristic:
-	switchCharacteristic.writeValue(0);
-	// start advertising
+	BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
+	BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
+	stringCharacteristic.setEventHandler(BLEWritten, stringCharacteristicWritten);
+	stringCharacteristic.writeValue(""); // Ensure the characteristic is blank.
 	BLE.advertise();
-	Serial.println("BLE LED Peripheral");
-}
-
-void loop() {
-	// listen for BLE peripherals to connect:
-	BLEDevice central = BLE.central();
-	// if a central is connected to peripheral:
-	if (central) {
-		Serial.print("Connected to central: ");
-		// print the central's MAC address:
-		Serial.println(central.deviceName());
-
-		if (currentlyLocked) {   // any value other than 0
-			Serial.println("Motor Forward");
-			motorForward(0, 100);
-			digitalWrite(ledPin, HIGH);         // will turn the LED on
-			delay(2000);
-			motorStop(0);
-			currentlyLocked = !currentlyLocked;
-		} else {                              // a 0 value
-			Serial.println(F("LED off"));
-			motorBackward(0, 100);
-			delay(2000);
-			motorStop(0);
-			digitalWrite(ledPin, LOW);          // will turn the LED off
-			currentlyLocked = !currentlyLocked;
-		}
-
-		// while the central is still connected to peripheral:
-		while (central.connected()) {
-			// if the remote device wrote to the characteristic,
-			// use the value to control the LED:
-			/*
-			if (switchCharacteristic.written()) {
-			  if (switchCharacteristic.value()) {   // any value other than 0
-				Serial.println("Motor Forward");
-				motorForward(0, 100);
-				digitalWrite(ledPin, HIGH);         // will turn the LED on
-				delay(2000);
-				motorStop(0);
-			  } else {                              // a 0 value
-				Serial.println(F("LED off"));
-				motorBackward(0, 100);
-				delay(2000);
-				motorStop(0);
-				digitalWrite(ledPin, LOW);          // will turn the LED off
-			  }
-			}
-			*/
-		}
-		// when the central disconnects, print it out:
-		Serial.print(F("Disconnected from central: "));
-		Serial.println(central.address());
-	}
+	Serial.println(("Bluetooth device active, waiting for connections..."));
 }
