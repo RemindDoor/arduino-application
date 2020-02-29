@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
+
+#ifndef ARDUINO_SAMD_MKRWIFI1010
 #include <HardwareSerial.h>
 
 extern HardwareSerial Serial;
+#endif
 
 #define MotorBoardI2CAddress 4
 

@@ -13,9 +13,11 @@
 #include "SDPArduino.h"
 #include <ArduinoBLE.h>
 #include <Wire.h>
+#ifndef ARDUINO_SAMD_MKRWIFI1010
 #include <HardwareSerial.h>
 
 extern HardwareSerial Serial;
+#endif
 
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
 // BLE LED Switch Characteristic - custom 128-bit UUID, read and writable by central
