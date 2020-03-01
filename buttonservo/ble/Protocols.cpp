@@ -36,11 +36,27 @@ void unlockDoor() {
 }
 
 void generateNewUser(byte *data) {
+	// Generating a new user request. Comes with their name.
+	// Sends back their authentication key.
 
+	User user = addUser((char *) data, 0, MAX_LONG);
+
+	sendString(user.key, KEY_SIZE);
 }
 
 void guestUnlockDoor(byte *data) {
 
+}
+
+void sendUserList() {
+	String userList = "";
+	for (int i = 0; i < currentNumberOfUsers; i++) {
+		for (int j = 0; j < NAME_SIZE; j++) {
+			userList.concat(users[i].name[j]);
+		}
+		userList.concat('|');
+	}
+	sendString((byte*) userList.c_str(), userList.length());
 }
 
 /*
@@ -48,13 +64,14 @@ void guestUnlockDoor(byte *data) {
  * 0: ADMIN - Unlocking door request admin
  * 1: Unlocking door request guest
  * 2: ADMIN - Generate new user request (Generates new key and adds user name)
+ *      | --- 32 bytes of name --- |
  * 3: ADMIN - Remove user request (You provide a name).
  *      | --- 32 bytes of name --- |
  * 4: ADMIN - Get all authenticated users.
  *      | --- nothing --- |
  * 5: My name change request.
  *      | --- 32 bytes of new name --- |
- * 6: Others change name request.
+ * 6: ADMIN - Others change name request.
  *      | --- 32 bytes of old name --- | | --- 32 bytes of new name --- |
  */
 
@@ -84,7 +101,6 @@ void guestRequest(byte *receivedData, byte key[16]) {
 void adminRequest(byte *receivedData, byte key[16]) {
 	byte protocolRequest = receivedData[0];
 	byte *data = receivedData + 1;
-	String s = "Bonjour!";
 	switch (protocolRequest) {
 		case 0:
 			// Admin unlock door request. Can unlock immediately.
@@ -101,7 +117,7 @@ void adminRequest(byte *receivedData, byte key[16]) {
 			break;
 		case 4:
 			// Get full user list.
-			sendString((byte*) s.c_str(), 8);
+			sendUserList();
 			break;
 		case 6:
 			// Change another's name.
@@ -112,6 +128,4 @@ void adminRequest(byte *receivedData, byte key[16]) {
 			guestRequest(receivedData, key);
 			break;
 	}
-
-	Serial.println();
 }

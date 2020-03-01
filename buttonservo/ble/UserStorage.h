@@ -5,7 +5,7 @@
 #ifndef BLE_USERSTORAGE_H
 #define BLE_USERSTORAGE_H
 
-const int NAME_SIZE = 32;
+const int NAME_SIZE = 31;
 const int KEY_SIZE = 16;
 
 struct User {
@@ -13,9 +13,12 @@ struct User {
 	byte key[KEY_SIZE];
 	long long startTime;
 	long long endTime;
+	bool isAdmin;
 };
 
-const int NUM_USERS = 32;
+extern User users[];
+const int NUM_USERS = 16;
+const long long MAX_LONG = 9223372036854775807LL;
 extern int currentNumberOfUsers;
 
 User* getUserByName(const char name[NAME_SIZE]);
@@ -26,9 +29,9 @@ void editName(const char oldName[NAME_SIZE], const char newName[NAME_SIZE]);
 
 void editName(const byte key[KEY_SIZE], const char newName[NAME_SIZE]);
 
-void addUser(const char name[NAME_SIZE], long long startTime, long long endTime, byte key[KEY_SIZE]);
+User addUser(const char name[NAME_SIZE], long long startTime, long long endTime, byte key[KEY_SIZE]);
 
-void addUser(const char name[NAME_SIZE], long long startTime, long long endTime);
+User addUser(const char name[NAME_SIZE], long long startTime, long long endTime);
 
 void deleteUser(const char *name);
 

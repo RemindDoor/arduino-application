@@ -19,6 +19,7 @@ const int maxSize = 2048;
 const int sizeOfBookends = 4;
 const int extraBuffer = sizeOfBookends + 8; // The 8 for the long long time.
 const int sizeOfIV = 16;
+extern BLEStringCharacteristic stringCharacteristic;
 
 byte received[maxSize + extraBuffer] = {};
 int position = 0;
@@ -57,7 +58,8 @@ int getLengthOfTransmission(byte* pointer) {
 
 void validDataReceived(byte* receivedData, byte key[16]) {
 	Serial.print("Data received: ");
-	printString(receivedData+1, getLengthOfTransmission(receivedData));
+	int length = getLengthOfTransmission(receivedData);
+	printString(receivedData+1, length-1);
 	Serial.println();
 
 	// We'll assume everyone is an admin for now.
@@ -88,6 +90,23 @@ bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 	return false;
 }
 
+void printLL(long long ll) {
+	uint64_t xx = ll/1000000000ULL;
+
+	if (xx >0) Serial.print((long)xx);
+	Serial.print((long)(ll-xx*1000000000));
+	Serial.println();
+}
+
+bool isValidDecryption(const byte* plain) {
+	for (int i = 0; i < sizeOfBookends; i++) {
+		if (plain[8+i] != 255) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /*
  * Data format (Once decrypted):
  * 8 bytes of the current time
@@ -104,7 +123,12 @@ void receivedData() {
 	aes.set_key(master_key, sizeOfIV);
 	aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
 
-	Serial.println("Decrypted.");
+	if (isValidDecryption(plain)) {
+		Serial.println("Decrypted successfully.");
+	} else {
+		Serial.println("Decryption went wrong.");
+	}
+
 
 	// Grab the time from the decrypted text.
 	ArrayToLL converter = {plain[0],plain[1],plain[2],plain[3], plain[4], plain[5], plain[6], plain[7]};
@@ -115,6 +139,9 @@ void receivedData() {
 
 	if (shouldRequestBeGranted(protocolRequest, receivedTime)) {
 		validDataReceived(dataBlock, master_key);
+	} else {
+		Serial.println("Request was denied.");
+		stringCharacteristic.writeValue("The request was denied.");
 	}
 
 	position = 0;
