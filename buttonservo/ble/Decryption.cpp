@@ -56,12 +56,12 @@ int getLengthOfTransmission(byte* pointer) {
 
 
 void validDataReceived(byte* receivedData, byte key[16]) {
-	Serial.println("Valid data received.");
-	printString(receivedData, getLengthOfTransmission(receivedData));
+	Serial.print("Data received: ");
+	printString(receivedData+1, getLengthOfTransmission(receivedData));
+	Serial.println();
 
 	// We'll assume everyone is an admin for now.
 	adminRequest(receivedData, key);
-	Serial.println();
 }
 
 bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
@@ -99,9 +99,10 @@ void receivedData() {
 	byte* plain = new byte[maxSize + extraBuffer];
 
 	for (int i = 0; i < currentNumberOfUsers; i++) {
-		aes.set_key(master_key, sizeOfIV);
-		aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
+
 	}
+	aes.set_key(master_key, sizeOfIV);
+	aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
 
 	Serial.println("Decrypted.");
 

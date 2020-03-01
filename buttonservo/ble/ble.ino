@@ -34,13 +34,17 @@ void blePeripheralConnectHandler(BLEDevice central) {
 	Serial.println("Connected.");
 }
 void blePeripheralDisconnectHandler(BLEDevice central) {
-	Serial.println("Received data.");
-
-	receivedData();
+	Serial.println("Disconnected.");
 }
 
 void stringCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
-	stringArrived(stringCharacteristic.value());
+	String string = stringCharacteristic.value();
+	if (string.length() == 0) {
+		Serial.println("Received data.");
+		receivedData();
+	} else {
+		stringArrived(string);
+	}
 }
 
 void setup() {

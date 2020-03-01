@@ -10,6 +10,8 @@
 extern HardwareSerial Serial;
 #endif
 
+User users[NUM_USERS] = {};
+int currentNumberOfUsers = 0;
 
 User *getUserByName(const char *name) {
 	for (int i = 0; i < NUM_USERS; i++) {

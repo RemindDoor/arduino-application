@@ -16,8 +16,7 @@ struct User {
 };
 
 const int NUM_USERS = 32;
-User users[NUM_USERS] = {};
-int currentNumberOfUsers = 0;
+extern int currentNumberOfUsers;
 
 User* getUserByName(const char name[NAME_SIZE]);
 

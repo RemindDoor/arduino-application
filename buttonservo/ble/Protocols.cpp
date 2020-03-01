@@ -12,6 +12,17 @@
 #include <HardwareSerial.h>
 extern HardwareSerial Serial;
 #endif
+extern BLEStringCharacteristic stringCharacteristic;
+
+void sendString(const byte* message, int size) {
+	String D = "";
+	for (int i = 0; i < size; i++) {
+		D.concat((char) message[i]);
+	}
+	stringCharacteristic.writeValue(D);
+	Serial.print("Sent back to phone: ");
+	Serial.println(D);
+}
 
 bool ignoresTimeFrame(byte protocolNum) {
 	if (protocolNum == 1) {
@@ -73,7 +84,7 @@ void guestRequest(byte *receivedData, byte key[16]) {
 void adminRequest(byte *receivedData, byte key[16]) {
 	byte protocolRequest = receivedData[0];
 	byte *data = receivedData + 1;
-
+	String s = "Bonjour!";
 	switch (protocolRequest) {
 		case 0:
 			// Admin unlock door request. Can unlock immediately.
@@ -90,6 +101,7 @@ void adminRequest(byte *receivedData, byte key[16]) {
 			break;
 		case 4:
 			// Get full user list.
+			sendString((byte*) s.c_str(), 8);
 			break;
 		case 6:
 			// Change another's name.
