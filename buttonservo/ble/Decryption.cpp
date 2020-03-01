@@ -4,6 +4,8 @@
 
 #include "SDPArduino.h"
 #include "AES.h"
+#include "Protocols.h"
+#include "UserStorage.h"
 #include <ArduinoBLE.h>
 #include <Wire.h>
 #include "Decryption.h"
@@ -20,7 +22,7 @@ const int sizeOfIV = 16;
 
 byte received[maxSize + extraBuffer] = {};
 int position = 0;
-byte key[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+byte master_key[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 AES aes;
 long long time = 0;
 
@@ -52,10 +54,38 @@ int getLengthOfTransmission(byte* pointer) {
 	}
 }
 
-void validDataReceived(byte* receivedData) {
+
+void validDataReceived(byte* receivedData, byte key[16]) {
 	Serial.println("Valid data received.");
 	printString(receivedData, getLengthOfTransmission(receivedData));
+
+	// We'll assume everyone is an admin for now.
+	adminRequest(receivedData, key);
 	Serial.println();
+}
+
+bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
+	// Ensure request is properly authenticated.
+
+	// If this is a guest request
+	if (ignoresTimeFrame(protocolRequest)) {
+		return true;
+	}
+
+	// If the time's not been set yet we can't doubt the request.
+	// TODO potential security issue.
+	if (time == 0) {
+		time = receivedTime-millis();
+		return true;
+	}
+
+	// To be a valid request, the time must be within a minute.
+	if (abs(time-(receivedTime-millis())) < 60000) {
+		return true;
+	}
+
+	// Invalid request.
+	return false;
 }
 
 /*
@@ -68,8 +98,10 @@ void validDataReceived(byte* receivedData) {
 void receivedData() {
 	byte* plain = new byte[maxSize + extraBuffer];
 
-	aes.set_key(key, sizeOfIV);
-	aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
+	for (int i = 0; i < currentNumberOfUsers; i++) {
+		aes.set_key(master_key, sizeOfIV);
+		aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
+	}
 
 	Serial.println("Decrypted.");
 
@@ -77,14 +109,11 @@ void receivedData() {
 	ArrayToLL converter = {plain[0],plain[1],plain[2],plain[3], plain[4], plain[5], plain[6], plain[7]};
 	long long receivedTime = converter.ll;
 
-	if (time == 0) {
-		validDataReceived(plain + extraBuffer);
-		time = receivedTime-millis();
-	} else {
-		// If we're within a minute
-		if (abs(time-(receivedTime-millis())) < 60000) {
-			validDataReceived(plain + extraBuffer);
-		}
+	byte* dataBlock = plain + extraBuffer; // Important data is past this point.
+	byte protocolRequest = dataBlock[0]; // The first byte of important data.
+
+	if (shouldRequestBeGranted(protocolRequest, receivedTime)) {
+		validDataReceived(dataBlock, master_key);
 	}
 
 	position = 0;

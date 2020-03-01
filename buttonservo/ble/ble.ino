@@ -34,7 +34,7 @@ void blePeripheralConnectHandler(BLEDevice central) {
 	Serial.println("Connected.");
 }
 void blePeripheralDisconnectHandler(BLEDevice central) {
-	Serial.println("Disconnected.");
+	Serial.println("Received data.");
 
 	receivedData();
 }
@@ -47,6 +47,7 @@ void setup() {
 	Serial.begin(115200);
 	Wire.begin();
 	motorStop(1);
+	randomSeed(analogRead(0));
 
 	if (!BLE.begin()) {
 		Serial.println("starting BLE failed!");

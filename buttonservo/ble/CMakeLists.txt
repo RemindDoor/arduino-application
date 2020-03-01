@@ -19,4 +19,4 @@ add_executable(ble
         AES.cpp
 
 
-        Decryption.cpp Decryption.h)
+        Decryption.cpp Decryption.h Protocols.cpp Protocols.h UserStorage.cpp UserStorage.h)
