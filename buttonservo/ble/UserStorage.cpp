@@ -14,8 +14,8 @@ User users[NUM_USERS] = {};
 int currentNumberOfUsers = 0;
 
 User *getUserByName(const char *name) {
-	for (int i = 0; i < NUM_USERS; i++) {
-		if (memcmp(name, users[i].name, NAME_SIZE) != 0) {
+	for (int i = 0; i < currentNumberOfUsers; i++) {
+		if (memcmp(name, users[i].name, NAME_SIZE) == 0) {
 			return users + i;
 		}
 	}
@@ -23,8 +23,8 @@ User *getUserByName(const char *name) {
 }
 
 User *getUserByKey(const byte *key) {
-	for (int i = 0; i < NUM_USERS; i++) {
-		if (memcmp(key, users[i].key, KEY_SIZE) != 0) {
+	for (int i = 0; i < currentNumberOfUsers; i++) {
+		if (memcmp(key, users[i].key, KEY_SIZE) == 0) {
 			return users + i;
 		}
 	}

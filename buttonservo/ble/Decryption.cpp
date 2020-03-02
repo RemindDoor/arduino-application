@@ -124,21 +124,27 @@ byte * attemptDecryption() {
 
 	for (int i = 0; i < currentNumberOfUsers; i++) {
 		Serial.print("Trying user ");
-		Serial.println(users[i].name);
-		aes.set_key(users[i].key, sizeOfIV);
+		printString((byte*) users[i].name, NAME_SIZE);
+		Serial.print("Key: ");
+		printString((byte*) users[i].key, KEY_SIZE);
+		Serial.println();
+
+
+		aes.set_key(users[i].key, KEY_SIZE);
 		aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
+		aes = AES();
+
 		if (isValidDecryption(plain)) return plain;
-
 		memset(plain, 0, maxSize + extraBuffer);
-
 		for (int j = 0; j < maxSize + extraBuffer; j++) {
-			tempReceived[i] = received[i];
+			tempReceived[j] = received[j];
 		}
 	}
 
-
-	aes.set_key(master_key, sizeOfIV);
+	aes.set_key(master_key, KEY_SIZE);
 	aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
+	aes = AES();
+
 	if (isValidDecryption(plain)) {
 		userIsAdmin = true;
 		return plain;

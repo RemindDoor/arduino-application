@@ -17,7 +17,11 @@ extern BLEStringCharacteristic stringCharacteristic;
 void sendString(const byte* message, int size) {
 	String D = "";
 	for (int i = 0; i < size; i++) {
-		D.concat((char) message[i]);
+		if (message[i] == 0) {
+			D.concat("ZERO");
+		} else {
+			D.concat((char) message[i]);
+		}
 	}
 	stringCharacteristic.writeValue(D);
 	Serial.print("Sent back to phone: ");
