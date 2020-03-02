@@ -17,11 +17,11 @@ extern BLEStringCharacteristic stringCharacteristic;
 void sendString(const byte* message, int size) {
 	String D = "";
 	for (int i = 0; i < size; i++) {
-		if (message[i] == 0) {
-			D.concat("ZERO");
-		} else {
+//		if (message[i] == 0) {
+//			D.concat("ZERO");
+//		} else {
 			D.concat((char) message[i]);
-		}
+//		}
 	}
 	stringCharacteristic.writeValue(D);
 	Serial.print("Sent back to phone: ");
@@ -58,13 +58,18 @@ void generateNewUser(byte *data) {
 	// Generating a new user request. Comes with their name.
 	// Sends back their authentication key.
 
-	User user = addUser((char *) data, 0, MAX_LONG, true);
+	User* user = addUser((char *) data, 0, MAX_LONG, true);
 
-	sendString(user.key, KEY_SIZE);
+	sendString(user->key, KEY_SIZE);
 }
 
-void guestUnlockDoor(byte *data) {
+void generateTempGuest(byte *data) {
+	long long startTime = *(data + NAME_SIZE);
+	long long endTime = *(data + NAME_SIZE + 8);
+	User* user = addUser((char*) data, startTime, endTime, false);
+	user->temporaryKey = true;
 
+	sendString(user->key, KEY_SIZE);
 }
 
 void sendUserList() {
@@ -78,12 +83,26 @@ void sendUserList() {
 	sendString((byte*) userList.c_str(), userList.length());
 }
 
+void makeNewGuestKey(byte key[16]) {
+	User* user = getUserByKey(key);
+
+	// One of two places this happens. Change both if changing.
+	byte newKey[KEY_SIZE] = {};
+	for (unsigned char & i : newKey) {
+		i = random(0, 255);
+	}
+
+	memcpy(user->key, newKey, KEY_SIZE);
+
+	sendString(newKey, KEY_SIZE);
+}
+
 /*
  * Case list:
- * 0: ADMIN - Unlocking door request admin
- * 1: Unlocking door request guest
+ * 0: Unlocking door request
+ * 1: ADMIN - Create temporary guest account (Logs it for replacement and adds timestamps)
+ *      | --- 32 bytes of name --- | | --- 8 bytes of start time --- | | --- 8 bytes of end time --- |
  * 2: ADMIN - Generate new user request (Generates new key and adds user name)
- *      | --- 32 bytes of name --- |
  * 3: ADMIN - Remove user request (You provide a name).
  *      | --- 32 bytes of name --- |
  * 4: ADMIN - Get all authenticated users.
@@ -92,6 +111,7 @@ void sendUserList() {
  *      | --- 32 bytes of new name --- |
  * 6: ADMIN - Others change name request.
  *      | --- 32 bytes of old name --- | | --- 32 bytes of new name --- |
+ * 7: Swaps out guest key for new random key and gives to guest.
  */
 
 void guestRequest(byte *receivedData, byte key[16]) {
@@ -100,16 +120,16 @@ void guestRequest(byte *receivedData, byte key[16]) {
 	byte *data = receivedData + 1;
 
 	switch (protocolRequest) {
-		case 1:
-			// Guest unlock door request.
-			// Only works if the authentication key is not already in the database.
-			// Sends back information including the guest's name, the duration of their stay and their authentication key.
-			// Also adds the user to the database.
-			guestUnlockDoor(data);
+		case 0:
+			// unlock door request. Can unlock immediately.
+			unlockDoor();
 			break;
 		case 5:
 			// Name change request.
 			editName(key, (char*) data);
+			break;
+		case 7:
+			makeNewGuestKey(key);
 			break;
 		default:
 			// Error. This request was invalid.
@@ -121,9 +141,9 @@ void adminRequest(byte *receivedData, byte key[16]) {
 	byte protocolRequest = receivedData[0];
 	byte *data = receivedData + 1;
 	switch (protocolRequest) {
-		case 0:
-			// Admin unlock door request. Can unlock immediately.
-			unlockDoor();
+		case 1:
+			// Create temporary guest account (Logs it for replacement and adds timestamps)
+			generateTempGuest(data);
 			break;
 		case 2:
 			// Generating a new user request. Comes with their name.

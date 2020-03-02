@@ -26,7 +26,7 @@ int position = 0;
 byte master_key[] = {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 AES aes;
 long long time = 0;
-bool userIsAdmin = true;
+bool userIsMaster = true;
 
 void printString(byte* pointer, int size) {
 	for(int i = 0; i < size; i++){
@@ -56,6 +56,7 @@ int getLengthOfTransmission(byte* pointer) {
 	}
 }
 
+User currentUser;
 
 void validDataReceived(byte* receivedData, byte key[16]) {
 	Serial.print("Data received: ");
@@ -63,14 +64,17 @@ void validDataReceived(byte* receivedData, byte key[16]) {
 	printString(receivedData+1, length-1);
 	Serial.println();
 
-	// We'll assume everyone is an admin for now.
-	adminRequest(receivedData, key);
+	if (userIsMaster || currentUser.isAdmin) {
+		adminRequest(receivedData, key);
+	} else {
+		guestRequest(receivedData, key);
+	}
 }
 
 bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 	// Ensure request is properly authenticated.
 
-	if (userIsAdmin) {
+	if (userIsMaster) {
 		Serial.println("This user has used the master QR code.");
 		return true;
 	}
@@ -87,13 +91,22 @@ bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 		return true;
 	}
 
-	// To be a valid request, the time must be within a minute.
-	if (abs(time-(receivedTime-millis())) < 60000) {
-		return true;
+	// Is this request valid within the time constraints
+	if (time > (currentUser.endTime-millis())) {
+		Serial.println("The time was after the end.");
+		return false;
+	} else if (time < (currentUser.startTime-millis())) {
+		Serial.println("The time was before the start");
+		return false;
 	}
 
-	// Invalid request.
-	return false;
+	// To be a valid request, the time must be within a minute.
+	if (abs(time-(receivedTime-millis())) > 60000) {
+		Serial.println("You took too long to send the message.");
+		return false;
+	}
+
+	return true;
 }
 
 void printLL(long long ll) {
@@ -134,19 +147,24 @@ byte * attemptDecryption() {
 		aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
 		aes = AES();
 
-		if (isValidDecryption(plain)) return plain;
+		if (isValidDecryption(plain)) {
+			currentUser = users[i];
+			Serial.println("User was successful.");
+			return plain;
+		}
 		memset(plain, 0, maxSize + extraBuffer);
 		for (int j = 0; j < maxSize + extraBuffer; j++) {
 			tempReceived[j] = received[j];
 		}
 	}
 
+	Serial.println("Trying Master key");
 	aes.set_key(master_key, KEY_SIZE);
 	aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
 	aes = AES();
 
 	if (isValidDecryption(plain)) {
-		userIsAdmin = true;
+		userIsMaster = true;
 		return plain;
 	}
 
@@ -185,7 +203,7 @@ void receivedData() {
 
 	position = 0;
 	memset(received, 0, maxSize + extraBuffer);
-	userIsAdmin = false;
+	userIsMaster = false;
 }
 
 void stringArrived(const String& value) {

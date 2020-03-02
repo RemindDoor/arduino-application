@@ -50,10 +50,10 @@ void deleteUser(const char *name) {
 	currentNumberOfUsers--;
 }
 
-User addUser(const char *name, long long startTime, long long endTime, bool admin, byte *key) {
+User* addUser(const char *name, long long startTime, long long endTime, bool admin, byte *key) {
 	User* oldUser = getUserByName(name);
 	if (oldUser != nullptr) {
-		return *oldUser;
+		return oldUser;
 	}
 
 	User user = User();
@@ -66,10 +66,10 @@ User addUser(const char *name, long long startTime, long long endTime, bool admi
 	users[currentNumberOfUsers] = user;
 	currentNumberOfUsers++;
 
-	return user;
+	return &users[currentNumberOfUsers-1];
 }
 
-User addUser(const char *name, long long startTime, long long endTime, bool admin) {
+User* addUser(const char *name, long long startTime, long long endTime, bool admin) {
 	byte key[KEY_SIZE] = {};
 	for (unsigned char & i : key) {
 		i = random(0, 255);

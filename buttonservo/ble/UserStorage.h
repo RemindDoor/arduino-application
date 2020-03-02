@@ -14,6 +14,7 @@ struct User {
 	long long startTime;
 	long long endTime;
 	bool isAdmin;
+	bool temporaryKey;
 };
 
 extern User users[];
@@ -29,9 +30,9 @@ void editName(const char oldName[NAME_SIZE], const char newName[NAME_SIZE]);
 
 void editName(const byte key[KEY_SIZE], const char newName[NAME_SIZE]);
 
-User addUser(const char name[NAME_SIZE], long long startTime, long long endTime, bool admin, byte key[KEY_SIZE]);
+User* addUser(const char name[NAME_SIZE], long long startTime, long long endTime, bool admin, byte key[KEY_SIZE]);
 
-User addUser(const char name[NAME_SIZE], long long startTime, long long endTime, bool admin);
+User* addUser(const char name[NAME_SIZE], long long startTime, long long endTime, bool admin);
 
 void deleteUser(const char *name);
 
