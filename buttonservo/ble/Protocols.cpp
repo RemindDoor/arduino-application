@@ -3,10 +3,10 @@
 //
 
 #include "Protocols.h"
-#include "UserStorage.h"
 #include "SDPArduino.h"
 #include "AES.h"
 #include <ArduinoBLE.h>
+#include "UserStorage.h"
 #include <Wire.h>
 #ifndef ARDUINO_SAMD_MKRWIFI1010
 #include <HardwareSerial.h>
@@ -83,18 +83,12 @@ void sendUserList() {
 	sendString((byte*) userList.c_str(), userList.length());
 }
 
-void makeNewGuestKey(byte key[16]) {
-	User* user = getUserByKey(key);
-
-	// One of two places this happens. Change both if changing.
-	byte newKey[KEY_SIZE] = {};
-	for (unsigned char & i : newKey) {
-		i = random(0, 255);
+void makeNewGuestKey(User* user) {
+	for (int i = 0; i < KEY_SIZE; i++) {
+		user->key[i] = random(0, 255);
 	}
 
-	memcpy(user->key, newKey, KEY_SIZE);
-
-	sendString(newKey, KEY_SIZE);
+	sendString(user->key, KEY_SIZE);
 }
 
 /*
@@ -114,7 +108,7 @@ void makeNewGuestKey(byte key[16]) {
  * 7: Swaps out guest key for new random key and gives to guest.
  */
 
-void guestRequest(byte *receivedData, byte key[16]) {
+void guestRequest(byte *receivedData, void* user) {
 	// At this point the guest has been verified as being in their stay.
 	byte protocolRequest = receivedData[0];
 	byte *data = receivedData + 1;
@@ -126,10 +120,10 @@ void guestRequest(byte *receivedData, byte key[16]) {
 			break;
 		case 5:
 			// Name change request.
-			editName(key, (char*) data);
+			editName(((User*)user)->key, (char*) data);
 			break;
 		case 7:
-			makeNewGuestKey(key);
+			makeNewGuestKey(((User*)user));
 			break;
 		default:
 			// Error. This request was invalid.
@@ -137,7 +131,7 @@ void guestRequest(byte *receivedData, byte key[16]) {
 	}
 }
 
-void adminRequest(byte *receivedData, byte key[16]) {
+void adminRequest(byte *receivedData, void* user) {
 	byte protocolRequest = receivedData[0];
 	byte *data = receivedData + 1;
 	switch (protocolRequest) {
@@ -165,7 +159,7 @@ void adminRequest(byte *receivedData, byte key[16]) {
 			break;
 		default:
 			// Fall back on guest protocols.
-			guestRequest(receivedData, key);
+			guestRequest(receivedData, user);
 			break;
 	}
 }

@@ -4,11 +4,10 @@
 
 #ifndef BLE_PROTOCOLS_H
 #define BLE_PROTOCOLS_H
-
 #include <ArduinoBLE.h>
 
-void guestRequest(byte* receivedData, byte key[16]);
-void adminRequest(byte* receivedData, byte key[16]);
+void guestRequest(byte* receivedData, void* user);
+void adminRequest(byte* receivedData, void* user);
 bool ignoresTimeFrame(byte protocolNum);
 
 #endif //BLE_PROTOCOLS_H

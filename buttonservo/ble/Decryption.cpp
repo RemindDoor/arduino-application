@@ -56,18 +56,20 @@ int getLengthOfTransmission(byte* pointer) {
 	}
 }
 
-User currentUser;
+User* currentUser;
 
 void validDataReceived(byte* receivedData, byte key[16]) {
 	Serial.print("Data received: ");
 	int length = getLengthOfTransmission(receivedData);
 	printString(receivedData+1, length-1);
 	Serial.println();
+	Serial.print("Data length:");
+	Serial.println(length);
 
-	if (userIsMaster || currentUser.isAdmin) {
-		adminRequest(receivedData, key);
+	if (userIsMaster || currentUser->isAdmin) {
+		adminRequest(receivedData, currentUser);
 	} else {
-		guestRequest(receivedData, key);
+		guestRequest(receivedData, currentUser);
 	}
 }
 
@@ -91,6 +93,9 @@ bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 		return true;
 	}
 
+
+	// TODO currently not working
+	/*
 	// Is this request valid within the time constraints
 	if (time > (currentUser.endTime-millis())) {
 		Serial.println("The time was after the end.");
@@ -99,6 +104,7 @@ bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 		Serial.println("The time was before the start");
 		return false;
 	}
+	 */
 
 	// To be a valid request, the time must be within a minute.
 	if (abs(time-(receivedTime-millis())) > 60000) {
@@ -148,8 +154,8 @@ byte * attemptDecryption() {
 		aes = AES();
 
 		if (isValidDecryption(plain)) {
-			currentUser = users[i];
-			Serial.println("User was successful.");
+			currentUser = &users[i];
+			Serial.println("That was the correct key.");
 			return plain;
 		}
 		memset(plain, 0, maxSize + extraBuffer);
