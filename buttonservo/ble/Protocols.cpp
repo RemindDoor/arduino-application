@@ -39,7 +39,7 @@ void generateNewUser(byte *data) {
 	// Generating a new user request. Comes with their name.
 	// Sends back their authentication key.
 
-	User user = addUser((char *) data, 0, MAX_LONG);
+	User user = addUser((char *) data, 0, MAX_LONG, true);
 
 	sendString(user.key, KEY_SIZE);
 }

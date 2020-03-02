@@ -23,9 +23,10 @@ extern BLEStringCharacteristic stringCharacteristic;
 
 byte received[maxSize + extraBuffer] = {};
 int position = 0;
-byte master_key[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+byte master_key[] = {5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 AES aes;
 long long time = 0;
+bool userIsAdmin = true;
 
 void printString(byte* pointer, int size) {
 	for(int i = 0; i < size; i++){
@@ -69,6 +70,11 @@ void validDataReceived(byte* receivedData, byte key[16]) {
 bool shouldRequestBeGranted(byte protocolRequest, long long receivedTime) {
 	// Ensure request is properly authenticated.
 
+	if (userIsAdmin) {
+		Serial.println("This user has used the master QR code.");
+		return true;
+	}
+
 	// If this is a guest request
 	if (ignoresTimeFrame(protocolRequest)) {
 		return true;
@@ -107,6 +113,41 @@ bool isValidDecryption(const byte* plain) {
 	return true;
 }
 
+byte* tempReceived = new byte[maxSize + extraBuffer];
+byte* plain = new byte[maxSize + extraBuffer];
+
+byte * attemptDecryption() {
+	memset(plain, 0, maxSize + extraBuffer);
+	for (int i = 0; i < maxSize + extraBuffer; i++) {
+		tempReceived[i] = received[i];
+	}
+
+	for (int i = 0; i < currentNumberOfUsers; i++) {
+		Serial.print("Trying user ");
+		Serial.println(users[i].name);
+		aes.set_key(users[i].key, sizeOfIV);
+		aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
+		if (isValidDecryption(plain)) return plain;
+
+		memset(plain, 0, maxSize + extraBuffer);
+
+		for (int j = 0; j < maxSize + extraBuffer; j++) {
+			tempReceived[i] = received[i];
+		}
+	}
+
+
+	aes.set_key(master_key, sizeOfIV);
+	aes.cbc_decrypt(tempReceived+sizeOfIV, plain, 64, tempReceived);
+	if (isValidDecryption(plain)) {
+		userIsAdmin = true;
+		return plain;
+	}
+
+	Serial.println("Failed decryption!");
+	return nullptr;
+}
+
 /*
  * Data format (Once decrypted):
  * 8 bytes of the current time
@@ -115,37 +156,30 @@ bool isValidDecryption(const byte* plain) {
  * 4 bytes of 255 (To mark the end of the transmission)
  */
 void receivedData() {
-	byte* plain = new byte[maxSize + extraBuffer];
+	Serial.println("Attempting decryption...");
+	byte* plain = attemptDecryption();
+	if (plain != nullptr) {
+		// Grab the time from the decrypted text.
+		ArrayToLL converter = {plain[0],plain[1],plain[2],plain[3], plain[4], plain[5], plain[6], plain[7]};
+		long long receivedTime = converter.ll;
 
-	for (int i = 0; i < currentNumberOfUsers; i++) {
+		byte* dataBlock = plain + extraBuffer; // Important data is past this point.
+		byte protocolRequest = dataBlock[0]; // The first byte of important data.
 
-	}
-	aes.set_key(master_key, sizeOfIV);
-	aes.cbc_decrypt(received+sizeOfIV, plain, 64, received);
-
-	if (isValidDecryption(plain)) {
-		Serial.println("Decrypted successfully.");
+		if (shouldRequestBeGranted(protocolRequest, receivedTime)) {
+			validDataReceived(dataBlock, master_key);
+		} else {
+			Serial.println("Request was denied.");
+			stringCharacteristic.writeValue("The request was denied.");
+		}
 	} else {
-		Serial.println("Decryption went wrong.");
-	}
-
-
-	// Grab the time from the decrypted text.
-	ArrayToLL converter = {plain[0],plain[1],plain[2],plain[3], plain[4], plain[5], plain[6], plain[7]};
-	long long receivedTime = converter.ll;
-
-	byte* dataBlock = plain + extraBuffer; // Important data is past this point.
-	byte protocolRequest = dataBlock[0]; // The first byte of important data.
-
-	if (shouldRequestBeGranted(protocolRequest, receivedTime)) {
-		validDataReceived(dataBlock, master_key);
-	} else {
-		Serial.println("Request was denied.");
-		stringCharacteristic.writeValue("The request was denied.");
+		Serial.println("Key is invalid.");
+		stringCharacteristic.writeValue("The key is invalid.");
 	}
 
 	position = 0;
 	memset(received, 0, maxSize + extraBuffer);
+	userIsAdmin = false;
 }
 
 void stringArrived(const String& value) {

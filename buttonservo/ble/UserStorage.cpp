@@ -48,11 +48,17 @@ void deleteUser(const char *name) {
 	memset(&users[currentNumberOfUsers-1], 0, sizeof(User));
 }
 
-User addUser(const char *name, long long startTime, long long endTime, byte *key) {
+User addUser(const char *name, long long startTime, long long endTime, bool admin, byte *key) {
+	User* oldUser = getUserByName(name);
+	if (oldUser != nullptr) {
+		return *oldUser;
+	}
+
 	User user = User();
 	memcpy(user.name, name, NAME_SIZE);
 	user.startTime = startTime;
 	user.endTime = endTime;
+	user.isAdmin = admin;
 	memcpy(user.key, key, KEY_SIZE);
 
 	users[currentNumberOfUsers] = user;
@@ -61,10 +67,10 @@ User addUser(const char *name, long long startTime, long long endTime, byte *key
 	return user;
 }
 
-User addUser(const char *name, long long startTime, long long endTime) {
+User addUser(const char *name, long long startTime, long long endTime, bool admin) {
 	byte key[KEY_SIZE] = {};
 	for (unsigned char & i : key) {
 		i = random(0, 255);
 	}
-	return addUser(name, startTime, endTime, key);
+	return addUser(name, startTime, endTime, admin, key);
 }
