@@ -118,6 +118,7 @@ void adminRequest(byte *receivedData, byte key[16]) {
 		case 3:
 			// Remove user request.
 			deleteUser((char*) data);
+			sendUserList();
 			break;
 		case 4:
 			// Get full user list.

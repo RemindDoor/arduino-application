@@ -46,6 +46,8 @@ void deleteUser(const char *name) {
 
 	memcpy(user, &users[currentNumberOfUsers-1], sizeof(User));
 	memset(&users[currentNumberOfUsers-1], 0, sizeof(User));
+	
+	currentNumberOfUsers--;
 }
 
 User addUser(const char *name, long long startTime, long long endTime, bool admin, byte *key) {
