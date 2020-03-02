@@ -35,8 +35,23 @@ bool ignoresTimeFrame(byte protocolNum) {
 	return false;
 }
 
+bool currentlyLocked = false;
+
 void unlockDoor() {
 	Serial.println("Door is unlocked!");
+	if (currentlyLocked) {   // any value other than 0
+		Serial.println("Motor Forward");
+		motorForward(0, 100);
+		delay(2000);
+		motorStop(0);
+		currentlyLocked = !currentlyLocked;
+	} else {                              // a 0 value
+		Serial.println("Motor Backward");
+		motorBackward(0, 100);
+		delay(2000);
+		motorStop(0);
+		currentlyLocked = !currentlyLocked;
+	}
 }
 
 void generateNewUser(byte *data) {

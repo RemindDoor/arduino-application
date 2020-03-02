@@ -46,7 +46,7 @@ void deleteUser(const char *name) {
 
 	memcpy(user, &users[currentNumberOfUsers-1], sizeof(User));
 	memset(&users[currentNumberOfUsers-1], 0, sizeof(User));
-	
+
 	currentNumberOfUsers--;
 }
 
