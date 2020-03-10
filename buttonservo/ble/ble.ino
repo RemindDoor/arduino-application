@@ -30,9 +30,18 @@ void loop() {
 	BLE.poll();
 }
 
+void lockTurned() {
+	BLE.stopAdvertise();
+	BLE.setDeviceName("Reminder");
+	BLE.setLocalName("Reminder");
+	BLE.advertise();
+}
+
 void blePeripheralConnectHandler(BLEDevice central) {
 	Serial.println("Connected.");
+	lockTurned();
 }
+
 void blePeripheralDisconnectHandler(BLEDevice central) {
 	Serial.println("Disconnected.");
 }
@@ -58,6 +67,7 @@ void setup() {
 		while (true);
 	}
 	BLE.setLocalName("RemindDoor");
+	BLE.setDeviceName("RemindDoor");
 	BLE.setAdvertisedService(ledService);
 	ledService.addCharacteristic(stringCharacteristic);
 	BLE.addService(ledService);

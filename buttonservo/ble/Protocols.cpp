@@ -125,6 +125,13 @@ void guestRequest(byte *receivedData, void* user) {
 		case 7:
 			makeNewGuestKey(((User*)user));
 			break;
+		case 8:
+			// An ack that the reminder has been received.
+			BLE.stopAdvertise();
+			BLE.setDeviceName("RemindDoor");
+			BLE.setLocalName("RemindDoor");
+			BLE.advertise();
+			break;
 		default:
 			// Error. This request was invalid.
 			break;
