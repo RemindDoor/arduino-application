@@ -25,25 +25,28 @@ extern HardwareSerial Serial;
 
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
 BLEStringCharacteristic stringCharacteristic("19B10001-0001-537E-4F6C-D104768A1214", BLERead | BLEWrite, 512);
+unsigned long timeFirstConnected = 0;
+bool amConnected = false;
 
 void loop() {
 	BLE.poll();
-}
 
-void lockTurned() {
-	BLE.stopAdvertise();
-	BLE.setDeviceName("Reminder");
-	BLE.setLocalName("Reminder");
-	BLE.advertise();
+	if (millis() - timeFirstConnected > 5000L && amConnected) {
+		BLE.disconnect();
+		Serial.println("Force disconnected.");
+		amConnected = false;
+	}
 }
 
 void blePeripheralConnectHandler(BLEDevice central) {
 	Serial.println("Connected.");
-	lockTurned();
+	timeFirstConnected = millis();
+	amConnected = true;
 }
 
 void blePeripheralDisconnectHandler(BLEDevice central) {
 	Serial.println("Disconnected.");
+	amConnected = false;
 }
 
 void stringCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {

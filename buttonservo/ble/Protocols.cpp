@@ -91,6 +91,11 @@ void makeNewGuestKey(User* user) {
 	sendString(user->key, KEY_SIZE);
 }
 
+void sendBlank() {
+	String blank = "";
+	sendString((byte*) blank.c_str(), 0);
+}
+
 /*
  * Case list:
  * 0: Unlocking door request
@@ -117,20 +122,19 @@ void guestRequest(byte *receivedData, void* user) {
 		case 0:
 			// unlock door request. Can unlock immediately.
 			unlockDoor();
+			sendBlank();
 			break;
 		case 5:
 			// Name change request.
 			editName(((User*)user)->key, (char*) data);
+			sendBlank();
 			break;
 		case 7:
 			makeNewGuestKey(((User*)user));
 			break;
 		case 8:
 			// An ack that the reminder has been received.
-			BLE.stopAdvertise();
-			BLE.setDeviceName("RemindDoor");
-			BLE.setLocalName("RemindDoor");
-			BLE.advertise();
+			sendBlank();
 			break;
 		default:
 			// Error. This request was invalid.
@@ -163,6 +167,7 @@ void adminRequest(byte *receivedData, void* user) {
 		case 6:
 			// Change another's name.
 			editName((char*) data, (char*) data + NAME_SIZE);
+			sendBlank();
 			break;
 		default:
 			// Fall back on guest protocols.
